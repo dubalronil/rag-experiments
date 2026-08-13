@@ -1,0 +1,10 @@
+# Embedding runs locally on CPU: no API key, no network after the first run,
+# and identical vectors on every run - which is what keeps results from
+# different days comparable.
+#
+# sentence-transformers pulls in torch, so installing this is ~2GB.
+# Everything before the embedding step (corpus loading, chunking, the eval
+# validator) is standard library only and needs none of it.
+
+sentence-transformers>=3.0
+numpy>=1.24
