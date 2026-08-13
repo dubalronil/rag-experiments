@@ -1,7 +1,7 @@
 # Design
 
-How this project fits together today: a fixed corpus and three stages — load,
-chunk, embed. Retrieval, reranking, generation, and scoring are not built, so
+How this project fits together today: a fixed corpus and four stages — load,
+chunk, embed, search. Reranking, generation, and scoring are not built, so
 they are not described here.
 
 The guiding constraint is that experiments must be **controlled**: exactly one
@@ -23,14 +23,15 @@ thing changes per run, everything else stays identical.
           │  rag/embedding.py   all-MiniLM-L6-v2, runs locally on CPU
           ▼
    numpy array                  (n_chunks, 384) numbers, one row per chunk
+          │
+          │  rag/retrieval.py   score a query against every chunk
+          ▼
+  RetrievedChunk list           the top k matches, best first
 ```
 
 Each stage depends only on the stage before it and on the shared types in
 `rag/types.py` — never on another stage's internals. That is what lets one
 stage be swapped in an experiment without touching the rest.
-
-Nothing is cached. Every run reloads and re-embeds from scratch, which takes
-about nine seconds.
 
 ## The corpus
 
@@ -38,8 +39,8 @@ Ten Wikipedia articles on NBA history — the league, the ABA, the Finals, four
 franchises, two players — about 97,000 words, downloaded once by
 `scripts/fetch_corpus.py` and committed to the repository.
 
-The corpus is **fixed on purpose**. Changing it changes what every metric
-means, so results from before and after a change are not comparable. Each file
+The corpus is **fixed on purpose**: changing it changes what every metric
+means, so results from either side of a change are not comparable. Each file
 records the Wikipedia revision it came from, so drift is detectable.
 
 Each file has a front matter block, then the article:
@@ -74,19 +75,17 @@ identity everything else refers to), `title`, `source_url`, `revision_id`, and
 `doc_id`, `text` (what gets embedded), and `start`/`end` character offsets
 into the parent document.
 
-Two things follow from this. The offsets let you tell later whether a chunker
-split a sentence across a boundary, which otherwise looks identical to a
-search ranking it too low. And chunk IDs depend on the chunk size — change the
-size and every ID changes — which is why the evaluation set identifies answers
-by quoting text rather than by chunk ID.
+The offsets let you tell whether a chunker split a sentence across a
+boundary, which otherwise looks identical to search ranking it too low. And
+chunk IDs shift whenever the chunk size changes, which is why the evaluation
+set identifies answers by quoting text rather than by chunk ID.
 
 ## Stage 1 — Loading (`rag/corpus.py`)
 
 `load_corpus()` reads every `.md` file in `data/documents/` into `Document`
-objects, sorted by `doc_id` so two runs see them in the same order. The front
-matter is a handful of `key: value` lines, parsed directly rather than with a
-YAML dependency. Malformed files raise an error naming the file, rather than
-loading something subtly wrong.
+objects, sorted by `doc_id` so two runs see the same order. Front matter is a
+handful of `key: value` lines, parsed directly rather than with a YAML
+dependency. Malformed files raise an error naming the file.
 
 ## Stage 2 — Chunking (`rag/chunking.py`)
 
@@ -96,8 +95,8 @@ one, so `overlap=0` gives adjacent slices and `overlap=128` means each chunk
 repeats the previous chunk's last 128 characters.
 
 Overlap exists so a sentence landing on a boundary still appears intact
-somewhere. It costs duplication — 512/128 produces 33% more chunks than
-512/0 — which is why it is worth measuring rather than assuming.
+somewhere. It costs duplication — 512/128 produces 33% more chunks than 512/0
+— which is why it is worth measuring rather than assuming.
 
 Sizes are in **characters**, not tokens. That keeps this stage
 dependency-free; the mismatch with the model's token limit is handled at the
@@ -114,11 +113,11 @@ chunk. The full corpus (1,508 chunks at 512/128) takes about 8.5 seconds and
 2.3 MB. Vectors are normalized, which makes comparing two of them a single
 multiplication later.
 
-The model is **`all-MiniLM-L6-v2`**, run locally on CPU. Cost was not the
-deciding factor — embedding this corpus through an API would cost under a
-cent. Local was chosen because a pinned model returns identical vectors
-indefinitely, chunk-size sweeps re-embed everything, and a public repository
-is a poor place for an API key. The price is ~2GB of dependencies.
+The model is **`all-MiniLM-L6-v2`**, run locally on CPU. Not for cost — an
+API would charge under a cent for this corpus — but because a pinned model
+returns identical vectors indefinitely, and a public repository is a poor
+place for an API key. The price is roughly 1–2 GB of dependencies, since
+`sentence-transformers` pulls in PyTorch.
 
 Documents and queries have **separate functions**. For this model they behave
 identically, but some models expect queries to carry a prefix that documents
@@ -126,11 +125,29 @@ do not, so keeping the paths separate makes swapping models a config change.
 
 **The one thing to watch: MiniLM reads at most 256 tokens.** Longer text is
 embedded up to that point and the rest silently dropped — no error, and the
-vector looks normal. In practice the ceiling lands between 512 and 1024
-characters per chunk: at 512 nothing is truncated, at 2048 almost every chunk
-loses more than half its text. A chunk-size sweep would then show quality
-dropping and look like a fact about chunking when it is really a fact about
-the model, so every call checks and warns.
+vector looks normal. The ceiling lands between 512 and 1024 characters per
+chunk. Without a warning a chunk-size sweep would show quality dropping and
+look like a fact about chunking when it is really a fact about the model, so
+every call checks and warns.
+
+## Stage 4 — Search (`rag/retrieval.py`)
+
+`VectorIndex.build(chunks)` embeds the chunks and holds them alongside their
+vectors. Row *i* is the embedding of chunk *i* — that pairing is the whole
+data structure, and the constructor refuses an index where the two do not line
+up. `index.search(query, k)` returns the *k* best matches as `RetrievedChunk`
+objects, each carrying the chunk, its score, and its rank (starting at 1,
+because reciprocal rank is 1/rank).
+
+The search is **exact** — every chunk is scored, nothing approximated. Because
+all vectors are normalized, that is one matrix multiply: about **0.06 ms**
+across 1,508 chunks, against ~7 ms to embed the query. Vector databases trade
+accuracy for speed at millions of vectors; at this size there is nothing to
+trade away.
+
+Indexes are **not written to disk**. Rebuilding takes about eight seconds,
+which is cheap enough that caching would mostly add a way to accidentally
+reuse vectors built from a different chunk size.
 
 ## File map
 
@@ -138,18 +155,19 @@ the model, so every call checks and warns.
 | --- | --- |
 | `data/documents/*.md` | The fixed corpus. |
 | `data/ATTRIBUTION.md` | Sources and the CC BY-SA terms the corpus carries. |
-| `rag/types.py` | `Document` and `Chunk`. Shapes only, no behaviour. |
+| `rag/types.py` | `Document`, `Chunk`, `RetrievedChunk`. Shapes only, no behaviour. |
 | `rag/corpus.py` | Markdown files → `Document`. |
 | `rag/chunking.py` | `Document` → list of `Chunk`. |
 | `rag/embedding.py` | Text → vectors. |
+| `rag/retrieval.py` | `VectorIndex`: holds chunks + vectors, exact top-k search. |
 | `scripts/fetch_corpus.py` | Rebuilds the corpus from Wikipedia. Run rarely — re-fetching changes it. |
 | `tests/test_chunking.py` | 12 tests on the chunker, whose bugs are the quietest in the pipeline. |
 | `requirements.txt` | Only the embedding stage needs these. |
 
 ## Not built yet
 
-No retrieval, reranking, generation, scoring, experiment configs, or result
-storage. Vectors are returned in memory and nothing writes them to disk.
+No reranking, generation, scoring, experiment configs, or result storage.
+Indexes are built in memory per run and nothing writes them to disk.
 
 `data/eval/questions.jsonl` and `scripts/validate_eval.py` exist as data and a
 consistency check, but nothing consumes them yet.

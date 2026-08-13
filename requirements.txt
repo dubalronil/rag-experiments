@@ -2,7 +2,9 @@
 # and identical vectors on every run - which is what keeps results from
 # different days comparable.
 #
-# sentence-transformers pulls in torch, so installing this is ~2GB.
+# sentence-transformers pulls in PyTorch, so expect roughly 1-2 GB of
+# dependencies plus the model weights on first use. The exact size depends on
+# your platform and whether you get a CPU or GPU build of torch.
 # Everything before the embedding step (corpus loading, chunking, the eval
 # validator) is standard library only and needs none of it.
 

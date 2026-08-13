@@ -83,3 +83,30 @@ class Chunk:
     scores zero, the offsets show immediately whether the chunker split the
     supporting sentence across a boundary, rather than leaving you to guess.
     """
+
+
+@dataclass(frozen=True)
+class RetrievedChunk:
+    """One search result: a Chunk, how well it matched, and where it placed.
+
+    The Chunk is held rather than copied, so everything about the original
+    slice - its text, its document, its offsets - stays reachable through
+    .chunk without this type having to mirror those fields.
+    """
+
+    chunk: Chunk
+    """The chunk that was retrieved."""
+
+    score: float
+    """Similarity to the query, higher is better.
+
+    With unit-normalized vectors this is cosine similarity, so it lands in
+    [-1, 1] and is comparable across queries.
+    """
+
+    rank: int
+    """Position in the result list, starting at 1 for the best match.
+
+    One-based rather than zero-based because rank is used directly in metrics:
+    reciprocal rank is 1/rank, which has no meaning at rank 0.
+    """
