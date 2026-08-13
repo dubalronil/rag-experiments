@@ -26,7 +26,8 @@ NOTE ON THE DOCUMENT CORPUS
 
 This MIT license covers the code in this repository only.
 
-The documents in data/documents/ are derived from Wikipedia and are licensed
-separately under Creative Commons Attribution-ShareAlike 4.0 International
-(CC BY-SA 4.0), not under the MIT license above. See data/ATTRIBUTION.md for
-sources, revision IDs, and a description of the modifications made.
+Everything under data/ is derived from Wikipedia and is licensed separately
+under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0),
+not under the MIT license above. This covers both the article text in
+data/documents/ and the verbatim quotes held in data/eval/questions.jsonl. See
+data/ATTRIBUTION.md for sources, revision IDs, and the modifications made.

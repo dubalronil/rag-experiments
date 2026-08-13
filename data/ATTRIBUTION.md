@@ -1,11 +1,15 @@
 # Corpus attribution and license
 
-The Markdown documents in `data/documents/` are derived from Wikipedia articles
-and are licensed under
-[Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/).
+Everything under `data/` is derived from Wikipedia articles and is licensed under
+[Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/):
 
-This license applies to the corpus only. The code in this repository is under
-the MIT license — see [`LICENSE`](../LICENSE).
+- `data/documents/` — the article text itself, as Markdown.
+- `data/eval/questions.jsonl` — the evaluation set. Its `quote` fields hold
+  sentences copied verbatim out of the documents, so the file carries the same
+  share-alike obligation even though the questions around them are original.
+
+This license applies to `data/` only. The code in this repository is under the
+MIT license — see [`LICENSE`](../LICENSE).
 
 Each article is authored by Wikipedia contributors; the page history linked from
 each source URL below lists them.
