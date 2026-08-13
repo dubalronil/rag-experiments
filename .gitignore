@@ -10,9 +10,11 @@ env/
 # Generated artifacts (rebuildable from the corpus - keep out of git)
 data/index/
 
-# Secrets
+# Secrets — never commit a real .env. The template is committed on purpose,
+# so it needs an explicit exception to the .env.* rule above it.
 .env
 .env.*
+!.env.example
 
 # Editors and OS
 .DS_Store

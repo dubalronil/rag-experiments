@@ -1,9 +1,9 @@
 # Design
 
 How this project fits together today: a fixed corpus and four stages — load,
-chunk, embed, search — plus a script that scores retrieval against the fixed
-evaluation set. Reranking and generation are not built, so they are not
-described here.
+chunk, embed, search, generate — plus a script that scores retrieval against
+the fixed evaluation set. Reranking is not built, and neither is any scoring
+of generated answers, so those are not described here.
 
 The guiding constraint is that experiments must be **controlled**: exactly one
 thing changes per run, everything else stays identical.
@@ -28,6 +28,10 @@ thing changes per run, everything else stays identical.
           │  rag/retrieval.py   score a query against every chunk
           ▼
   RetrievedChunk list           the top k matches, best first
+          │
+          │  rag/generation.py   Claude Haiku 4.5, answering from that context
+          ▼
+       answer text               one or two sentences, or an explicit refusal
 ```
 
 Each stage depends only on the stage before it and on the shared types in
@@ -144,11 +148,26 @@ The search is **exact** — every chunk is scored, nothing approximated. Because
 all vectors are normalized, that is one matrix multiply: about **0.06 ms**
 across 1,508 chunks, against ~7 ms to embed the query. Vector databases trade
 accuracy for speed at millions of vectors; at this size there is nothing to
-trade away.
+trade away. Indexes are **not written to disk** — rebuilding takes about eight
+seconds, and caching would mostly add a way to reuse vectors built from a
+different chunk size by mistake.
 
-Indexes are **not written to disk**. Rebuilding takes about eight seconds,
-which is cheap enough that caching would mostly add a way to accidentally
-reuse vectors built from a different chunk size.
+## Stage 5 — Generation (`rag/generation.py`)
+
+`generate_answer(question, retrieved)` renders the retrieved chunks into a
+numbered context block, sends it with the question, and returns the answer.
+The model is **Claude Haiku 4.5** at `temperature=0`, which the current
+generation of models no longer accepts but Haiku still does.
+
+Beyond answering, the prompt restricts the model to the supplied context and
+tells it to reply with one exact sentence when that context is insufficient.
+That sentence is a module constant, so a scorer can recognise a refusal
+without pattern-matching prose — and it is what makes the evaluation set's
+unanswerable questions measurable.
+
+This is the only stage needing credentials, costing money, or being
+non-deterministic. Credentials are left to the SDK, so a `.env` file and a
+logged-in CLI profile both work.
 
 ## File map
 
@@ -160,15 +179,18 @@ reuse vectors built from a different chunk size.
 | `rag/corpus.py` | Markdown files → `Document`. |
 | `rag/chunking.py` | `Document` → list of `Chunk`. |
 | `rag/embedding.py` | Text → vectors. |
+| `rag/generation.py` | Question + retrieved chunks → answer. The only stage needing an API key. |
 | `rag/retrieval.py` | `VectorIndex`: holds chunks + vectors, exact top-k search. |
 | `rag/text.py` | The one definition of `normalize()`, shared by anything comparing gold quotes to text. |
 | `scripts/fetch_corpus.py` | Rebuilds the corpus from Wikipedia. Run rarely — re-fetching changes it. |
 | `scripts/run_retrieval_eval.py` | Scores the retriever against the evaluation set. |
 | `tests/test_chunking.py` | 12 tests on the chunker, whose bugs are the quietest in the pipeline. |
-| `requirements.txt` | Only the embedding stage needs these. |
+| `.env.example` | Template for the one credential the project uses. Copy to `.env`, which is gitignored. |
+| `requirements.txt` | Needed by the embedding and generation stages only. |
 
 ## Not built yet
 
-No reranking, generation, experiment configs, or result storage. Indexes are
-built in memory per run, and scores are printed rather than saved, so
-comparing two configurations means reading two terminal outputs.
+No reranking, no scoring of generated answers, no experiment configs, and no
+result storage. Indexes are built in memory per run and scores are printed
+rather than saved, so comparing two configurations means reading two terminal
+outputs.

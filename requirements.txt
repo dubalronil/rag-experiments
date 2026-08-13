@@ -10,3 +10,8 @@
 
 sentence-transformers>=3.0
 numpy>=1.24
+
+# Generation only. Needs ANTHROPIC_API_KEY, either exported in the shell or
+# placed in a .env file (see .env.example). Every other stage runs without it.
+anthropic>=0.40
+python-dotenv>=1.0
