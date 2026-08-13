@@ -1,8 +1,9 @@
 # Design
 
 How this project fits together today: a fixed corpus and four stages — load,
-chunk, embed, search. Reranking, generation, and scoring are not built, so
-they are not described here.
+chunk, embed, search — plus a script that scores retrieval against the fixed
+evaluation set. Reranking and generation are not built, so they are not
+described here.
 
 The guiding constraint is that experiments must be **controlled**: exactly one
 thing changes per run, everything else stays identical.
@@ -160,14 +161,14 @@ reuse vectors built from a different chunk size.
 | `rag/chunking.py` | `Document` → list of `Chunk`. |
 | `rag/embedding.py` | Text → vectors. |
 | `rag/retrieval.py` | `VectorIndex`: holds chunks + vectors, exact top-k search. |
+| `rag/text.py` | The one definition of `normalize()`, shared by anything comparing gold quotes to text. |
 | `scripts/fetch_corpus.py` | Rebuilds the corpus from Wikipedia. Run rarely — re-fetching changes it. |
+| `scripts/run_retrieval_eval.py` | Scores the retriever against the evaluation set. |
 | `tests/test_chunking.py` | 12 tests on the chunker, whose bugs are the quietest in the pipeline. |
 | `requirements.txt` | Only the embedding stage needs these. |
 
 ## Not built yet
 
-No reranking, generation, scoring, experiment configs, or result storage.
-Indexes are built in memory per run and nothing writes them to disk.
-
-`data/eval/questions.jsonl` and `scripts/validate_eval.py` exist as data and a
-consistency check, but nothing consumes them yet.
+No reranking, generation, experiment configs, or result storage. Indexes are
+built in memory per run, and scores are printed rather than saved, so
+comparing two configurations means reading two terminal outputs.

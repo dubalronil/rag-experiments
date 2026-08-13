@@ -25,33 +25,19 @@ Exits non-zero if anything fails, so it can be used as a pre-commit check.
 
 import argparse
 import json
-import re
 import sys
-import unicodedata
 from collections import Counter
 from pathlib import Path
 
+# Run as `python scripts/validate_eval.py`, which puts scripts/ on sys.path
+# rather than the repo root - so point at the root explicitly before importing
+# from the rag package.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from rag.text import normalize  # noqa: E402
+
 REQUIRED_FIELDS = {"qid", "question", "answer", "type", "supporting"}
 VALID_TYPES = {"factual", "multi_hop", "temporal", "unanswerable"}
-
-
-def normalize(text):
-    """Collapse away differences that are not real mismatches.
-
-    Markdown files wrap and re-wrap, and typing a quote by hand tends to
-    introduce straight quotes where the source has curly ones. Neither should
-    count as the quote being absent, so both sides get normalized the same way
-    before comparison.
-    """
-    text = unicodedata.normalize("NFC", text)
-    for fancy, plain in [
-        ("‘", "'"), ("’", "'"),      # curly single quotes
-        ("“", '"'), ("”", '"'),      # curly double quotes
-        ("–", "-"), ("—", "-"),      # en dash, em dash
-        (" ", " "),                        # non-breaking space
-    ]:
-        text = text.replace(fancy, plain)
-    return re.sub(r"\s+", " ", text).strip()
 
 
 def load_corpus(corpus_dir):
