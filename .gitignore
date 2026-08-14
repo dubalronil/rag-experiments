@@ -10,6 +10,13 @@ env/
 # Generated artifacts (rebuildable from the corpus - keep out of git)
 data/index/
 
+# Run outputs. Regenerable, quickly stale, and the graded ones cost API calls
+# to produce - so they are kept local rather than committed.
+answers.txt
+graded*.txt
+graded*.jsonl
+manual_grading.md
+
 # Secrets — never commit a real .env. The template is committed on purpose,
 # so it needs an explicit exception to the .env.* rule above it.
 .env

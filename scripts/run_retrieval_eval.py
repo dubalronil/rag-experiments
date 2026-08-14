@@ -38,7 +38,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from rag.chunking import chunk_corpus  # noqa: E402
 from rag.corpus import load_corpus  # noqa: E402
-from rag.embedding import MODELS  # noqa: E402
+from rag.embedding import DEFAULT_MODEL, MODELS  # noqa: E402
 from rag.retrieval import VectorIndex  # noqa: E402
 from rag.text import contains_quote  # noqa: E402
 
@@ -104,7 +104,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--size", type=int, default=512, help="chunk size in characters")
     parser.add_argument("--overlap", type=int, default=128, help="chunk overlap in characters")
-    parser.add_argument("--model", default="minilm", help=f"one of {', '.join(sorted(MODELS))}")
+    parser.add_argument("--model", default=DEFAULT_MODEL,
+                        help=f"one of: {', '.join(sorted(MODELS))}")
     parser.add_argument("--eval", default="data/eval/questions.jsonl")
     parser.add_argument("--corpus", default="data/documents")
     args = parser.parse_args()

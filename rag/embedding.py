@@ -23,10 +23,7 @@ from sentence_transformers import SentenceTransformer
 
 @dataclass(frozen=True)
 class EmbeddingModel:
-    """A model the config can select by name."""
-
-    repo_id: str
-    """The Hugging Face identifier the weights are downloaded from."""
+    """Facts about one model, keyed by its exact Hugging Face identifier."""
 
     dimensions: int
     """Length of the vectors this model produces. Recorded so a caller can
@@ -42,17 +39,16 @@ class EmbeddingModel:
     """
 
 
-# Models a config can select by name. One entry today; reading the dict tells
-# you every option there is.
+# Models a config can select. Keys are the exact model identifiers, so a
+# config and a saved result name the same string the library is given.
 MODELS = {
-    "minilm": EmbeddingModel(
-        repo_id="sentence-transformers/all-MiniLM-L6-v2",
+    "sentence-transformers/all-MiniLM-L6-v2": EmbeddingModel(
         dimensions=384,
         query_prefix="",
     ),
 }
 
-DEFAULT_MODEL = "minilm"
+DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 # Loading a model takes seconds and it is stateless once loaded, so keep each
 # one around rather than paying that cost per call.
@@ -71,7 +67,7 @@ def load_model(model=DEFAULT_MODEL):
         )
 
     if model not in _loaded:
-        _loaded[model] = SentenceTransformer(MODELS[model].repo_id)
+        _loaded[model] = SentenceTransformer(model)
     return _loaded[model]
 
 

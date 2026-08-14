@@ -1,0 +1,11 @@
+# Generation and judging switched off, so a sweep costs nothing and takes
+# seconds. Use this as the parent when only retrieval is under test.
+extends = "baseline"
+name = "retrieval-only"
+note = "Retrieval metrics only. No API calls."
+
+[generation]
+enabled = false
+
+[judging]
+enabled = false

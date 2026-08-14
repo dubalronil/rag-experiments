@@ -1,54 +1,53 @@
 # rag-experiments
 
-Learning RAG by comparing chunking, embeddings, retrieval, reranking, and generation through controlled experiments against a fixed evaluation set. No frameworks — every piece is written out explicitly.
+A RAG pipeline built from scratch — no frameworks — to measure how each design choice actually affects answer quality. Every stage is swappable, every run is scored against a fixed corpus and a fixed 50-question evaluation set, and the runner refuses to start if a config changes more than one variable at a time.
 
-**Status:** corpus, chunking, embeddings, search, retrieval scoring, and generation. Answer scoring is not built yet. See [`DESIGN.md`](DESIGN.md) for how the pieces fit together.
+## Result
 
-## Setup
+512-character chunks, 128 overlap, `all-MiniLM-L6-v2`, k=5, 42 answerable questions.
 
-```bash
-pip install -r requirements.txt        # roughly 1–2 GB, pulls in PyTorch
-```
-
-Everything except generation runs with no credentials. For generation:
-
-```bash
-cp .env.example .env                   # then paste your key into it
-```
-
-or `export ANTHROPIC_API_KEY=...`. A shell export takes precedence over `.env`, and `.env` is gitignored.
-
-## Running
-
-```bash
-python3 scripts/run_retrieval_eval.py            # score retrieval, prints the table below
-python3 scripts/run_retrieval_eval.py --size 256 --overlap 64
-python3 scripts/validate_eval.py                 # check gold quotes still match the corpus
-python3 scripts/fetch_corpus.py                  # rebuild the corpus (changes it — see below)
-python3 -m unittest discover tests
-```
-
-Generation is a library call rather than a script so far — `rag.generation.generate_answer(question, retrieved_chunks)`.
-
-## Baseline
-
-10 documents, 1,508 chunks at size 512 / overlap 128, `all-MiniLM-L6-v2`, 42 answerable questions:
-
-| | @1 | @3 | @5 |
+| Retrieval | @1 | @3 | @5 |
 | --- | ---: | ---: | ---: |
-| **Document recall** — a retrieved chunk came from a gold document | 0.714 | 0.905 | 0.929 |
-| **Passage hit rate** — a retrieved chunk contained the gold quote | 0.333 | 0.548 | 0.690 |
+| Document recall | 0.714 | 0.905 | 0.929 |
+| Passage hit rate | 0.333 | 0.548 | 0.690 |
 
-Document MRR is 0.812. The gap between the two rows is the interesting part: for roughly a quarter of questions, search finds the right article and misses the right sentence.
+| Answers (Haiku 4.5, judged 0–2 by Sonnet 5) | |
+| --- | ---: |
+| Correctness | 1.52 |
+| Groundedness | 1.88 |
+| Refused correctly when unanswerable | 8 / 8 |
 
-## Notes
+**Retrieval is the bottleneck, not the model.** Correctness is 1.93 when the gold passage is retrieved and 0.62 when it isn't — and every zero is a refusal, not a wrong answer.
 
-**Gold labels are verbatim quotes, not chunk IDs** — so the same labels stay valid no matter how the corpus is chunked. 16% of questions are deliberately unanswerable, to test whether generation admits it rather than confabulating; those are excluded from retrieval metrics, where they have nothing correct to retrieve.
+## Run it
 
-**The corpus is fixed on purpose.** Re-running `fetch_corpus.py` pulls newer Wikipedia revisions and changes what every metric means, so results from either side of a re-fetch are not comparable.
+```bash
+pip install -r requirements.txt                    # ~1–2 GB, pulls in PyTorch
+python3 scripts/run_experiment.py retrieval-only   # free, no credentials
+```
 
-**Tables are missing from the corpus.** The source API strips them, so per-season stats, championship lists, and coaching rosters are not present. Questions are written against the prose.
+Generation and judging need `ANTHROPIC_API_KEY` (see `.env.example`); a full graded run is ~$0.25.
+
+## Experiments
+
+A config names a parent and lists only what it changes:
+
+```toml
+extends = "baseline"
+name = "chunk-256"
+
+[chunking]
+size = 256
+```
+
+**The runner refuses to start if more than one setting differs from the parent**, unless `--multi-variable` is passed. Each run saves its merged config, metrics, and per-question records to `results/`.
+
+## Caveats
+
+The corpus is fixed on purpose — re-fetching it changes what every metric means. Tables are stripped by the source API, so per-season stats and championship lists aren't in it; questions are written against the prose.
+
+[`DESIGN.md`](DESIGN.md) covers the architecture and the reasoning behind it.
 
 ## License
 
-Code is MIT ([`LICENSE`](LICENSE)). Everything under `data/` is Wikipedia-derived and licensed CC BY-SA 4.0, not MIT — see [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md).
+Code is MIT ([`LICENSE`](LICENSE)). Everything under `data/` is Wikipedia-derived and CC BY-SA 4.0 — see [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md).

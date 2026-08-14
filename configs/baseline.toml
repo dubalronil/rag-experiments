@@ -1,0 +1,22 @@
+# The reference point. Every other config extends this and changes one thing.
+name = "baseline"
+note = "512/128 chunks, MiniLM embeddings, Haiku generation, Sonnet judging."
+
+[chunking]
+strategy = "fixed_size"
+size = 512
+overlap = 128
+
+[embedding]
+model = "sentence-transformers/all-MiniLM-L6-v2"
+
+[retrieval]
+k = 5
+
+[generation]
+enabled = true
+model = "claude-haiku-4-5"
+
+[judging]
+enabled = true
+model = "claude-sonnet-5"

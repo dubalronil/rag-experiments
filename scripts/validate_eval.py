@@ -62,6 +62,32 @@ def load_questions(eval_path):
     return questions, errors
 
 
+def check_absent(qid, question, documents):
+    """Verify the tripwire phrases for an unanswerable question really are absent.
+
+    A question labelled unanswerable is an assertion about the corpus, and
+    nothing was checking it - one of these labels turned out to be wrong, with
+    the corpus stating the answer in plain text, and the mistake only surfaced
+    when a model answered correctly and looked like it was hallucinating.
+
+    So `absent` lists phrases that would appear if the question were in fact
+    answerable, and this fails if any of them is present. It is a tripwire,
+    not a proof: a badly chosen phrase can still miss, exactly as a badly
+    chosen gold quote can point at the wrong sentence.
+    """
+    problems = []
+    for phrase in question.get("absent", []):
+        needle = normalize(phrase)
+        for doc_id, text in documents.items():
+            if needle in text:
+                problems.append(
+                    f"{qid}: labelled unanswerable, but {phrase!r} appears in "
+                    f"{doc_id} - the corpus may answer this after all"
+                )
+                break
+    return problems
+
+
 def check(questions, documents):
     """Return a list of problems. An empty list means the eval set is sound."""
     problems = []
@@ -90,7 +116,17 @@ def check(questions, documents):
         if question["type"] == "unanswerable":
             if supporting:
                 problems.append(f"{qid}: unanswerable but has supporting quotes")
+            if not question.get("notes", "").strip():
+                problems.append(
+                    f"{qid}: unanswerable questions need a notes field saying "
+                    f"why the corpus cannot answer them"
+                )
+            problems.extend(check_absent(qid, question, documents))
             continue
+        if question.get("absent"):
+            problems.append(
+                f"{qid}: only unanswerable questions may carry 'absent'"
+            )
         if not supporting:
             problems.append(f"{qid}: no supporting quotes")
             continue

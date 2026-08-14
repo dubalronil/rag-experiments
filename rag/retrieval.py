@@ -40,7 +40,7 @@ class VectorIndex:
     """Shape (len(chunks), dimensions), float32, unit-normalized."""
 
     model: str
-    """Which entry of embedding.MODELS produced the vectors.
+    """The exact model identifier that produced the vectors.
 
     Kept so queries are embedded by the same model as the documents. Scoring a
     query from one model against documents from another produces numbers that

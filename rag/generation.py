@@ -48,10 +48,7 @@ SYSTEM_PROMPT = textwrap.dedent(
 
 @dataclass(frozen=True)
 class GenerationModel:
-    """A model the config can select by name."""
-
-    model_id: str
-    """The exact API model identifier."""
+    """Facts about one model, keyed by its exact API model identifier."""
 
     max_tokens: int
     """Ceiling on the answer length. Answers here are one or two sentences,
@@ -59,10 +56,10 @@ class GenerationModel:
 
 
 MODELS = {
-    "haiku": GenerationModel(model_id="claude-haiku-4-5", max_tokens=1024),
+    "claude-haiku-4-5": GenerationModel(max_tokens=1024),
 }
 
-DEFAULT_MODEL = "haiku"
+DEFAULT_MODEL = "claude-haiku-4-5"
 
 SETUP_HELP = (
     "No Anthropic credentials found. Either:\n"
@@ -131,7 +128,7 @@ def generate_answer(question, retrieved, model=DEFAULT_MODEL):
 
     try:
         response = get_client().messages.create(
-            model=config.model_id,
+            model=model,
             max_tokens=config.max_tokens,
             # Sampling parameters were removed on the current-generation
             # models, but Haiku 4.5 still accepts them - so pin temperature to
