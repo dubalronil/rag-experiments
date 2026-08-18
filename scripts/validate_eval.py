@@ -12,12 +12,14 @@ Checks performed:
   2. qids are unique
   3. every doc_id names a file in the corpus
   4. every quote appears verbatim in that document
-  5. unanswerable questions have no supporting quotes, and others have some
+  5. unanswerable questions have no evidence groups, and others have some,
+     with every group holding at least one verbatim quote
 
 Standard library only - no third-party dependencies.
 
 Usage:
-    python scripts/validate_eval.py       # checks data/eval/questions.jsonl
+    python scripts/validate_eval.py                  # checks the nba eval set
+    python scripts/validate_eval.py --dataset space
     python scripts/validate_eval.py --eval /tmp/draft-questions.jsonl
 
 Exits non-zero if anything fails, so it can be used as a pre-commit check.
@@ -35,6 +37,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from rag.text import normalize  # noqa: E402
+from rag.datasets import DEFAULT_DATASET, resolve  # noqa: E402
 
 REQUIRED_FIELDS = {"qid", "question", "answer", "type", "supporting"}
 VALID_TYPES = {"factual", "multi_hop", "temporal", "unanswerable"}
@@ -128,22 +131,38 @@ def check(questions, documents):
                 f"{qid}: only unanswerable questions may carry 'absent'"
             )
         if not supporting:
-            problems.append(f"{qid}: no supporting quotes")
+            problems.append(f"{qid}: no evidence groups")
             continue
 
-        for index, item in enumerate(supporting):
+        # `supporting` is a list of evidence groups: one group per fact the
+        # question requires, holding alternative quotes that each prove it.
+        for index, group in enumerate(supporting):
             where = f"{qid}[{index}]"
-            doc_id = item.get("doc_id")
-            quote = item.get("quote")
 
-            if not doc_id or not quote:
-                problems.append(f"{where}: needs both doc_id and quote")
+            if not isinstance(group, dict) or "quotes" not in group:
+                problems.append(
+                    f"{where}: evidence groups need a 'quotes' list "
+                    f"(the flat doc_id/quote form is no longer accepted)"
+                )
                 continue
-            if doc_id not in documents:
-                problems.append(f"{where}: no such document {doc_id!r}")
+            quotes = group["quotes"]
+            if not quotes:
+                problems.append(f"{where}: empty evidence group")
                 continue
-            if normalize(quote) not in documents[doc_id]:
-                problems.append(f"{where}: quote not found verbatim in {doc_id}")
+
+            for position, item in enumerate(quotes):
+                spot = f"{where}.quotes[{position}]"
+                doc_id = item.get("doc_id")
+                quote = item.get("quote")
+
+                if not doc_id or not quote:
+                    problems.append(f"{spot}: needs both doc_id and quote")
+                    continue
+                if doc_id not in documents:
+                    problems.append(f"{spot}: no such document {doc_id!r}")
+                    continue
+                if normalize(quote) not in documents[doc_id]:
+                    problems.append(f"{spot}: quote not found verbatim in {doc_id}")
 
     for qid, count in seen_qids.items():
         if count > 1:
@@ -158,7 +177,9 @@ def summarize(questions, documents):
     docs = Counter(
         item["doc_id"]
         for _, q in questions
-        for item in q.get("supporting", [])
+        for group in q.get("supporting", [])
+        if isinstance(group, dict)
+        for item in group.get("quotes", [])
         if isinstance(item, dict) and "doc_id" in item
     )
 
@@ -176,12 +197,20 @@ def summarize(questions, documents):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--eval", default="data/eval/questions.jsonl")
-    parser.add_argument("--corpus", default="data/documents")
+    parser.add_argument("--dataset", default=DEFAULT_DATASET,
+                        help=f"corpus + eval set to use (default: {DEFAULT_DATASET})")
+    # Default None so an explicit override is distinguishable from the
+    # dataset default - resolve() files an overridden run under "custom".
+    parser.add_argument("--eval", default=None,
+                        help="override the eval set path")
+    parser.add_argument("--corpus", default=None,
+                        help="override the corpus directory")
     args = parser.parse_args()
+    dataset, corpus_path, eval_file = resolve(
+        args.dataset, corpus=args.corpus, eval_file=args.eval)
 
-    eval_path = Path(args.eval)
-    corpus_dir = Path(args.corpus)
+    eval_path = Path(eval_file)
+    corpus_dir = Path(corpus_path)
 
     if not eval_path.exists():
         print(f"no eval file at {eval_path}", file=sys.stderr)

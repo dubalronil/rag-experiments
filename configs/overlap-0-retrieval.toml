@@ -1,0 +1,6 @@
+extends = "retrieval-only"
+name = "overlap-0-retrieval"
+note = "Remove chunk overlap and measure retrieval quality."
+
+[chunking]
+overlap = 0

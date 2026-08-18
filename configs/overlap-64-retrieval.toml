@@ -1,0 +1,6 @@
+extends = "retrieval-only"
+name = "overlap-64-retrieval"
+note = "Reduce chunk overlap from 128 to 64 characters."
+
+[chunking]
+overlap = 64

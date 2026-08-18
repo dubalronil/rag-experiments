@@ -1,0 +1,6 @@
+extends = "overlap-256-retrieval"
+name = "openai-large-retrieval"
+note = "Compare OpenAI text-embedding-3-large against other embedding models."
+
+[embedding]
+model = "text-embedding-3-large"

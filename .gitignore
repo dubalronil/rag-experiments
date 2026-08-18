@@ -12,6 +12,12 @@ data/index/
 
 # Run outputs. Regenerable, quickly stale, and the graded ones cost API calls
 # to produce - so they are kept local rather than committed.
+#
+# results/ holds every recorded run: config, metrics, per-question records,
+# summary.csv and the derived analysis. It stays local. EXPERIMENTS.md carries
+# the numbers and the reasoning, which is what a reader needs; the artifacts
+# behind them are working files.
+results/
 answers.txt
 graded*.txt
 graded*.jsonl
@@ -22,6 +28,9 @@ manual_grading.md
 .env
 .env.*
 !.env.example
+
+# Local agent/editor settings - machine-specific, not part of the project.
+.claude/
 
 # Editors and OS
 .DS_Store

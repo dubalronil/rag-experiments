@@ -1,0 +1,6 @@
+extends = "bge-small-retrieval"
+name = "bge-k10-retrieval"
+note = "Increase dense BGE retrieval from k=5 to k=10."
+
+[retrieval]
+k = 10

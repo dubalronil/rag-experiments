@@ -1,4 +1,4 @@
-"""Load the Markdown corpus in data/documents/ into Document objects.
+"""Load a dataset's Markdown corpus into Document objects.
 
 The files were produced by scripts/fetch_corpus.py and all have the same shape:
 a front matter block delimited by "---" lines, then the article body.
@@ -22,9 +22,11 @@ directly rather than by pulling in a YAML dependency.
 import re
 from pathlib import Path
 
+from rag.datasets import DEFAULT_DATASET, corpus_dir
+
 from rag.types import Document
 
-DEFAULT_CORPUS_DIR = Path("data/documents")
+DEFAULT_CORPUS_DIR = corpus_dir(DEFAULT_DATASET)
 
 # Front matter is the block between the first two "---" lines, which must be at
 # the very start of the file. Group 1 is the block's contents.

@@ -1,0 +1,6 @@
+extends = "overlap-256"
+name = "bge-small"
+note = "Compare BGE-small against MiniLM end-to-end with 512/256 chunking."
+
+[embedding]
+model = "BAAI/bge-small-en-v1.5"

@@ -1,0 +1,6 @@
+extends = "retrieval-only"
+name = "chunk-768-retrieval"
+note = "Increase chunk size from 512 to 768 characters."
+
+[chunking]
+size = 768

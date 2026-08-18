@@ -23,7 +23,8 @@ CONFIG_DIR = Path("configs")
 DEFAULTS = {
     "chunking": {"strategy": "fixed_size", "size": 512, "overlap": 128},
     "embedding": {"model": "sentence-transformers/all-MiniLM-L6-v2"},
-    "retrieval": {"k": 5},
+    "retrieval": {"strategy": "dense", "k": 5, "rerank": False,
+                  "multi_query": False, "subquery_rerank": False},
     "generation": {"enabled": True, "model": "claude-haiku-4-5"},
     "judging": {"enabled": True, "model": "claude-sonnet-5"},
 }

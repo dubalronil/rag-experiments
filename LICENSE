@@ -29,5 +29,6 @@ This MIT license covers the code in this repository only.
 Everything under data/ is derived from Wikipedia and is licensed separately
 under Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0),
 not under the MIT license above. This covers both the article text in
-data/documents/ and the verbatim quotes held in data/eval/questions.jsonl. See
-data/ATTRIBUTION.md for sources, revision IDs, and the modifications made.
+data/<dataset>/documents/ and the verbatim quotes held in
+data/<dataset>/eval/questions.jsonl, for every dataset. See data/ATTRIBUTION.md
+for sources, revision IDs, and the modifications made.

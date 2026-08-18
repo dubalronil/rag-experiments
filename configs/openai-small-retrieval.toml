@@ -1,0 +1,6 @@
+extends = "overlap-256-retrieval"
+name = "openai-small-retrieval"
+note = "Compare OpenAI text-embedding-3-small against local embedding models."
+
+[embedding]
+model = "text-embedding-3-small"

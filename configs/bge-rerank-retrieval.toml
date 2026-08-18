@@ -1,0 +1,6 @@
+extends = "bge-small-retrieval"
+name = "bge-rerank-retrieval"
+note = "Rerank the top 50 BGE candidates with a cross-encoder before selecting the final top 5."
+
+[retrieval]
+rerank = true

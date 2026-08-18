@@ -1,0 +1,6 @@
+extends = "bge-small-retrieval"
+name = "bm25-retrieval"
+note = "Compare BM25 lexical retrieval against dense BGE retrieval."
+
+[retrieval]
+strategy = "bm25"

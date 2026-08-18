@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Download NBA history articles from Wikipedia and save them as Markdown.
+"""Download a dataset's Wikipedia articles and save them as Markdown.
+
+Which articles a dataset contains is read from data/<dataset>/articles.txt, so
+this script is not tied to any one corpus.
 
 We ask the MediaWiki API for the "extract" of each article, which is the
 article's plain text with section headings included, and with citations,
@@ -9,7 +12,8 @@ writing an HTML scraper, at the cost of losing tabular data (see README note).
 Standard library only - no third-party dependencies.
 
 Usage:
-    python scripts/fetch_corpus.py
+    python scripts/fetch_corpus.py                  # the default dataset
+    python scripts/fetch_corpus.py --dataset space
     python scripts/fetch_corpus.py --force          # re-download existing files
     python scripts/fetch_corpus.py --out some/dir
 """
@@ -25,20 +29,13 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-# The fixed corpus. Each entry is a Wikipedia article title, exactly as it
-# appears in the page URL. Edit this list to change the corpus.
-ARTICLES = [
-    "National Basketball Association",
-    "American Basketball Association",
-    "NBA Finals",
-    "Boston Celtics",
-    "Los Angeles Lakers",
-    "Chicago Bulls",
-    "Golden State Warriors",
-    "San Antonio Spurs",
-    "Michael Jordan",
-    "LeBron James",
-]
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from rag.datasets import DEFAULT_DATASET, corpus_dir, read_articles  # noqa: E402
+
+# The corpus is defined by data/<dataset>/articles.txt rather than by a list
+# here, so adding a dataset means adding a file, not editing this script -
+# and each corpus keeps its provenance next to the documents it produced.
 
 # Sections that carry no article prose. Everything under a top-level heading
 # with one of these names is dropped.
@@ -204,9 +201,19 @@ def build_document(article, retrieved_on):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--dataset",
+        default=DEFAULT_DATASET,
+        help=f"which dataset to fetch (default: {DEFAULT_DATASET})",
+    )
+    parser.add_argument(
         "--out",
-        default="data/documents",
-        help="directory to write Markdown files into (default: data/documents)",
+        default=None,
+        help="override the output directory (default: data/<dataset>/documents)",
+    )
+    parser.add_argument(
+        "--articles",
+        default=None,
+        help="override the article list (default: data/<dataset>/articles.txt)",
     )
     parser.add_argument(
         "--force",
@@ -221,14 +228,20 @@ def main():
     )
     args = parser.parse_args()
 
-    out_dir = Path(args.out)
+    out_dir = Path(args.out) if args.out else corpus_dir(args.dataset)
+    titles = (
+        [line.strip() for line in Path(args.articles).read_text(encoding="utf-8").splitlines()
+         if line.strip() and not line.strip().startswith("#")]
+        if args.articles else read_articles(args.dataset)
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
+    print(f"{len(titles)} articles -> {out_dir}\n")
     retrieved_on = datetime.date.today().isoformat()
 
     failures = []
     written = {}  # slug -> resolved title, to catch two entries landing on one file
 
-    for title in ARTICLES:
+    for title in titles:
         # Check before fetching so re-runs stay cheap. This uses the requested
         # title; if it turns out to be a redirect we correct the name below.
         if (out_dir / (slugify(title) + ".md")).exists() and not args.force:
@@ -254,7 +267,7 @@ def main():
         if slug in written:
             print(
                 f"FAILED  {title!r} resolves to {resolved!r}, already saved from "
-                f"{written[slug]!r} - remove one from ARTICLES",
+                f"{written[slug]!r} - remove one from the article list",
                 file=sys.stderr,
             )
             failures.append(title)
@@ -270,7 +283,7 @@ def main():
 
         time.sleep(args.delay)
 
-    print(f"\n{len(ARTICLES) - len(failures)}/{len(ARTICLES)} articles in {out_dir}")
+    print(f"\n{len(titles) - len(failures)}/{len(titles)} articles in {out_dir}")
     if failures:
         print("failed: " + ", ".join(failures), file=sys.stderr)
         return 1

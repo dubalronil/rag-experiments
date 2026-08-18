@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Document:
-    """One Markdown file from data/documents/.
+    """One Markdown file from a dataset's documents/ directory.
 
     The corpus is meant to stay fixed, so a Document is frozen: loading one
     twice gives you the same thing, and no later stage can quietly rewrite the
@@ -98,10 +98,16 @@ class RetrievedChunk:
     """The chunk that was retrieved."""
 
     score: float
-    """Similarity to the query, higher is better.
+    """How well this chunk matched the query, higher is better.
 
-    With unit-normalized vectors this is cosine similarity, so it lands in
-    [-1, 1] and is comparable across queries.
+    The scale depends on the retrieval strategy that produced it. Dense search
+    returns cosine similarity between unit-normalized vectors, bounded in
+    [-1, 1]; BM25 returns an unbounded, corpus-dependent sum. So a score is
+    meaningful for ordering results within one query, and for little else -
+    comparing raw scores across strategies compares two different units.
+
+    Nothing downstream relies on the value: every retrieval metric is computed
+    from `rank`, which means the same thing whichever strategy ran.
     """
 
     rank: int

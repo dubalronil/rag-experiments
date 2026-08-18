@@ -1,0 +1,6 @@
+extends = "baseline"
+name = "chunk-256"
+note = "Reduce chunk size from 512 to 256 characters and measure end-to-end quality."
+
+[chunking]
+size = 256

@@ -1,0 +1,6 @@
+extends = "baseline"
+name = "overlap-256"
+note = "Increase chunk overlap from 128 to 256 characters and measure end-to-end quality."
+
+[chunking]
+overlap = 256

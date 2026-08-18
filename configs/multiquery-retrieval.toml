@@ -1,0 +1,6 @@
+name = "multiquery-retrieval"
+extends = "bge-rerank-retrieval"
+note = "Split multi-part questions into clause-level queries and share the fixed 50-candidate budget across them."
+
+[retrieval]
+multi_query = true

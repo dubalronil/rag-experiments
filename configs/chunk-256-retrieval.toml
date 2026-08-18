@@ -1,0 +1,6 @@
+extends = "retrieval-only"
+name = "chunk-256-retrieval"
+note = "Reduce chunk size from 512 to 256 characters."
+
+[chunking]
+size = 256

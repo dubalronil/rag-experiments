@@ -35,6 +35,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from rag.chunking import chunk_corpus  # noqa: E402
 from rag.corpus import load_corpus  # noqa: E402
+from rag.datasets import DEFAULT_DATASET, resolve  # noqa: E402
 from rag.generation import NO_ANSWER, generate_answer  # noqa: E402
 from rag.retrieval import VectorIndex  # noqa: E402
 
@@ -76,16 +77,24 @@ def main():
     parser.add_argument("--k", type=int, default=5, help="chunks retrieved per question")
     parser.add_argument("--size", type=int, default=512)
     parser.add_argument("--overlap", type=int, default=128)
-    parser.add_argument("--eval", default="data/eval/questions.jsonl")
-    parser.add_argument("--corpus", default="data/documents")
+    parser.add_argument("--dataset", default=DEFAULT_DATASET,
+                        help=f"corpus + eval set to use (default: {DEFAULT_DATASET})")
+    # Default None so an explicit override is distinguishable from the
+    # dataset default - resolve() files an overridden run under "custom".
+    parser.add_argument("--eval", default=None,
+                        help="override the eval set path")
+    parser.add_argument("--corpus", default=None,
+                        help="override the corpus directory")
     args = parser.parse_args()
+    dataset, corpus_path, eval_file = resolve(
+        args.dataset, corpus=args.corpus, eval_file=args.eval)
 
-    questions = load_questions(args.eval)
+    questions = load_questions(eval_file)
     if args.limit:
         questions = questions[: args.limit]
 
     index = VectorIndex.build(
-        chunk_corpus(load_corpus(args.corpus), size=args.size, overlap=args.overlap)
+        chunk_corpus(load_corpus(corpus_path), size=args.size, overlap=args.overlap)
     )
 
     types = Counter(question["type"] for question in questions)

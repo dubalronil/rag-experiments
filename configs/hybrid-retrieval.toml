@@ -1,0 +1,6 @@
+extends = "bge-small-retrieval"
+name = "hybrid-retrieval"
+note = "Combine dense BGE and BM25 retrieval with Reciprocal Rank Fusion."
+
+[retrieval]
+strategy = "hybrid"

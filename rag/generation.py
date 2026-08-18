@@ -30,10 +30,15 @@ DOTENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 # without pattern-matching prose.
 NO_ANSWER = "The provided context does not contain the answer."
 
+# Deliberately says nothing about what the corpus is about. The same prompt
+# now runs against more than one dataset, and a prompt that names one domain
+# while the context comes from another does not measure the generator - it
+# measures whether the model will answer in spite of being told the subject is
+# something else. Naming no domain keeps the generator the only variable.
 SYSTEM_PROMPT = textwrap.dedent(
     f"""\
-    You answer questions about NBA history using only the context provided in
-    the user's message.
+    You answer questions using only the context provided in the user's
+    message.
 
     Rules:
     - Use only the provided context. Do not use anything you know from
@@ -54,9 +59,31 @@ class GenerationModel:
     """Ceiling on the answer length. Answers here are one or two sentences,
     so this only exists to stop a runaway response."""
 
+    temperature: int = None
+    """Sampling temperature, or None to omit the parameter entirely.
+
+    Not every model takes one. Sampling parameters were removed on the
+    current-generation models, which reject `temperature` outright rather than
+    ignoring it, while Haiku 4.5 still accepts it - so this is per-model rather
+    than a constant in the request.
+    """
+
+    thinking: dict = None
+    """Extended-thinking setting, or None to omit the parameter.
+
+    Models with adaptive thinking would otherwise turn a generator comparison
+    into a comparison of one model plus reasoning against another without it.
+    Disabling it explicitly keeps the generator the only thing that changed.
+    """
+
 
 MODELS = {
-    "claude-haiku-4-5": GenerationModel(max_tokens=1024),
+    # Unchanged: exactly the request that produced every recorded run.
+    "claude-haiku-4-5": GenerationModel(max_tokens=1024, temperature=0),
+    # Rejects sampling parameters, so temperature is omitted; thinking is
+    # disabled so capability is the variable rather than reasoning budget.
+    "claude-opus-5": GenerationModel(
+        max_tokens=1024, thinking={"type": "disabled"}),
 }
 
 DEFAULT_MODEL = "claude-haiku-4-5"
@@ -127,16 +154,22 @@ def generate_answer(question, retrieved, model=DEFAULT_MODEL):
     config = MODELS[model]
 
     try:
-        response = get_client().messages.create(
-            model=model,
-            max_tokens=config.max_tokens,
-            # Sampling parameters were removed on the current-generation
-            # models, but Haiku 4.5 still accepts them - so pin temperature to
-            # 0 for the most repeatable output the API allows.
-            temperature=0,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": build_prompt(question, retrieved)}],
-        )
+        # Built rather than written out, because which parameters are legal
+        # depends on the model: an unsupported one is a 400, not a no-op.
+        request = {
+            "model": model,
+            "max_tokens": config.max_tokens,
+            "system": SYSTEM_PROMPT,
+            "messages": [
+                {"role": "user", "content": build_prompt(question, retrieved)}
+            ],
+        }
+        if config.temperature is not None:
+            request["temperature"] = config.temperature
+        if config.thinking is not None:
+            request["thinking"] = config.thinking
+
+        response = get_client().messages.create(**request)
     except anthropic.AuthenticationError as error:
         # A credential was found and rejected - a different problem from
         # having none, so say so rather than repeating the setup steps.

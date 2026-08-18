@@ -1,0 +1,12 @@
+# Wikipedia article titles, exactly as they appear in the page URL.
+# One per line. Blank lines and lines starting with '#' are ignored.
+NASA
+Apollo program
+Apollo 11
+Apollo 13
+Space Shuttle program
+International Space Station
+Hubble Space Telescope
+Voyager program
+Mars rover
+James Webb Space Telescope

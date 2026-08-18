@@ -1,0 +1,6 @@
+name = "subquery-rerank-retrieval"
+extends = "multiquery-retrieval"
+note = "Score the same 50-candidate pool against every query and select by per-query rank: the original keeps 3 of 5 slots, each subquery gets one."
+
+[retrieval]
+subquery_rerank = true

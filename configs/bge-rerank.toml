@@ -1,0 +1,6 @@
+extends = "bge-small"
+name = "bge-rerank"
+note = "Rerank the top 50 BGE candidates before generation."
+
+[retrieval]
+rerank = true
